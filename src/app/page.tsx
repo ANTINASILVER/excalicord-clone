@@ -53,6 +53,7 @@ export default function Home() {
           <div>
             <p className="text-xl mb-4">欢迎, {user.user_metadata.full_name}!</p>
             <p className="text-sm text-gray-400 mb-6">{user.email}</p>
+            <a href="/board" className="block mb-4 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">进入白板</a>
             <button
               onClick={handleLogout}
               className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
