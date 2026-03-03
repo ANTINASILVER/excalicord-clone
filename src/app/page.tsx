@@ -18,6 +18,7 @@ export default function Home() {
   const [creating, setCreating] = useState(false)
   const [newTitle, setNewTitle] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -77,6 +78,14 @@ export default function Home() {
   const formatDate = (str: string) => {
     const d = new Date(str)
     return d.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+  }
+
+  const handleShareFromList = (boardId: string, shareToken: string) => {
+    const url = `${window.location.origin}/join/${shareToken}`
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedId(boardId)
+      setTimeout(() => setCopiedId(null), 2000)
+    })
   }
 
   if (loading) return (
@@ -139,44 +148,56 @@ export default function Home() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {boards.map(board => (
               <div key={board.id}
-                className="group relative bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-gray-600 transition-colors cursor-pointer"
-                onClick={() => router.push(`/board/${board.id}`)}>
-                <div className="flex items-start justify-between">
-                  <div>
-                    {editingId === board.id ? (
-                      <input
-                        autoFocus
-                        defaultValue={board.title}
-                        onClick={e => e.stopPropagation()}
-                        onBlur={async (e) => {
-                          const newTitle = e.target.value.trim()
-                          if (newTitle && newTitle !== board.title) {
-                            await supabase.from('boards').update({ title: newTitle }).eq('id', board.id)
-                            setBoards(prev => prev.map(b => b.id === board.id ? { ...b, title: newTitle } : b))
-                          }
-                          setEditingId(null)
-                        }}
-                        onKeyDown={async (e) => {
-                          if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
-                          if (e.key === 'Escape') setEditingId(null)
-                        }}
-                        className="font-medium bg-transparent border-b border-blue-500 text-white outline-none w-full"
-                      />
-                    ) : (
-                      <h3 className="font-medium text-white group-hover:text-blue-400 transition-colors">
-                        {board.title}
-                      </h3>
-                    )}
-                    <p className="text-xs text-gray-500 mt-1">{formatDate(board.updated_at)}</p>
-                  </div>
+                className="relative bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-gray-600 transition-colors"
+              >
+                {/* 标题区域，点击进入画布 */}
+                <div
+                  className="cursor-pointer mb-4"
+                  onClick={() => { if (editingId === board.id) return; router.push(`/board/${board.id}`) }}
+                >
+                  {editingId === board.id ? (
+                    <input
+                      autoFocus
+                      defaultValue={board.title}
+                      onClick={e => e.stopPropagation()}
+                      onBlur={async (e) => {
+                        const newTitle = e.target.value.trim()
+                        if (newTitle && newTitle !== board.title) {
+                          await supabase.from('boards').update({ title: newTitle }).eq('id', board.id)
+                          setBoards(prev => prev.map(b => b.id === board.id ? { ...b, title: newTitle } : b))
+                        }
+                        setEditingId(null)
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+                        if (e.key === 'Escape') setEditingId(null)
+                      }}
+                      className="font-medium bg-transparent border-b border-blue-500 text-white outline-none w-full"
+                    />
+                  ) : (
+                    <h3 className="font-medium text-white truncate">{board.title}</h3>
+                  )}
+                  <p className="text-xs text-gray-500 mt-1">{formatDate(board.updated_at)}</p>
+                </div>
+
+                {/* 底部操作栏 */}
+                <div className="flex items-center gap-2 pt-3 border-t border-gray-800">
                   <button
-                    onClick={e => { e.stopPropagation(); setEditingId(board.id) }}
-                    className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-blue-400 text-sm transition-all px-2 py-1">
+                    onClick={() => setEditingId(board.id)}
+                    className="flex-1 text-xs py-1.5 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+                  >
                     重命名
                   </button>
                   <button
-                    onClick={e => { e.stopPropagation(); deleteBoard(board.id) }}
-                    className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-red-400 text-sm transition-all px-2 py-1">
+                    onClick={() => handleShareFromList(board.id, board.share_token)}
+                    className="flex-1 text-xs py-1.5 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+                  >
+                    {copiedId === board.id ? '✓ 已复制' : '分享'}
+                  </button>
+                  <button
+                    onClick={() => deleteBoard(board.id)}
+                    className="flex-1 text-xs py-1.5 rounded-md text-gray-400 hover:text-red-400 hover:bg-gray-800 transition-colors"
+                  >
                     删除
                   </button>
                 </div>
