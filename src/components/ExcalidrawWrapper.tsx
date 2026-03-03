@@ -5,6 +5,8 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/element/types'
 import type { AppState, ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types'
+import Recorder from './Recorder'
+import CameraFloat from './CameraFloat'
 
 function ShareButton({ boardId }: { boardId: string }) {
   const [copied, setCopied] = useState(false)
@@ -67,6 +69,8 @@ export default function ExcalidrawWrapper({ boardId }: Props) {
   } | null>(null)
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved')
   const [collabUsers, setCollabUsers] = useState<CollabUser[]>([])
+  const [userId, setUserId] = useState<string | null>(null)
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null)
   const excalidrawAPIRef = useRef<ExcalidrawImperativeAPI | null>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const boardIdRef = useRef<string | null>(null)
@@ -86,6 +90,7 @@ export default function ExcalidrawWrapper({ boardId }: Props) {
         name: session.user.user_metadata.full_name ?? 'Anonymous',
         avatar: session.user.user_metadata.avatar_url ?? '',
       }
+      setUserId(session.user.id)
 
       // 加载 board
       const { data } = await supabase
@@ -267,6 +272,13 @@ export default function ExcalidrawWrapper({ boardId }: Props) {
       }}>
         <ShareButton boardId={boardId} />
       </div>
+
+      {userId && (
+        <>
+          <CameraFloat onStreamChange={setCameraStream} />
+          <Recorder boardId={boardId} userId={userId} cameraStream={cameraStream} />
+        </>
+      )}
 
       {/* 在线用户头像列表 */}
       {collabUsers.length > 0 && (

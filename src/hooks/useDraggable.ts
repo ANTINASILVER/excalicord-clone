@@ -1,0 +1,40 @@
+import { useRef, useEffect, useState } from 'react'
+
+export function useDraggable(initialX: number, initialY: number) {
+  const [pos, setPos] = useState({ x: initialX, y: initialY })
+  const dragging = useRef(false)
+  const offset = useRef({ x: 0, y: 0 })
+  const ref = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    const onMove = (e: MouseEvent | TouchEvent) => {
+      if (!dragging.current) return
+      const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
+      const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
+      setPos({
+        x: Math.max(0, Math.min(window.innerWidth - 100, clientX - offset.current.x)),
+        y: Math.max(0, Math.min(window.innerHeight - 100, clientY - offset.current.y)),
+      })
+    }
+    const onUp = () => { dragging.current = false }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    window.addEventListener('touchmove', onMove, { passive: false })
+    window.addEventListener('touchend', onUp)
+    return () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+      window.removeEventListener('touchmove', onMove)
+      window.removeEventListener('touchend', onUp)
+    }
+  }, [])
+
+  const onDragStart = (e: React.MouseEvent | React.TouchEvent) => {
+    dragging.current = true
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
+    offset.current = { x: clientX - pos.x, y: clientY - pos.y }
+  }
+
+  return { pos, ref, onDragStart }
+}
