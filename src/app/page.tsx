@@ -17,6 +17,7 @@ export default function Home() {
   const [boards, setBoards] = useState<Board[]>([])
   const [creating, setCreating] = useState(false)
   const [newTitle, setNewTitle] = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -142,11 +143,37 @@ export default function Home() {
                 onClick={() => router.push(`/board/${board.id}`)}>
                 <div className="flex items-start justify-between">
                   <div>
-                    <h3 className="font-medium text-white group-hover:text-blue-400 transition-colors">
-                      {board.title}
-                    </h3>
+                    {editingId === board.id ? (
+                      <input
+                        autoFocus
+                        defaultValue={board.title}
+                        onClick={e => e.stopPropagation()}
+                        onBlur={async (e) => {
+                          const newTitle = e.target.value.trim()
+                          if (newTitle && newTitle !== board.title) {
+                            await supabase.from('boards').update({ title: newTitle }).eq('id', board.id)
+                            setBoards(prev => prev.map(b => b.id === board.id ? { ...b, title: newTitle } : b))
+                          }
+                          setEditingId(null)
+                        }}
+                        onKeyDown={async (e) => {
+                          if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+                          if (e.key === 'Escape') setEditingId(null)
+                        }}
+                        className="font-medium bg-transparent border-b border-blue-500 text-white outline-none w-full"
+                      />
+                    ) : (
+                      <h3 className="font-medium text-white group-hover:text-blue-400 transition-colors">
+                        {board.title}
+                      </h3>
+                    )}
                     <p className="text-xs text-gray-500 mt-1">{formatDate(board.updated_at)}</p>
                   </div>
+                  <button
+                    onClick={e => { e.stopPropagation(); setEditingId(board.id) }}
+                    className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-blue-400 text-sm transition-all px-2 py-1">
+                    重命名
+                  </button>
                   <button
                     onClick={e => { e.stopPropagation(); deleteBoard(board.id) }}
                     className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-red-400 text-sm transition-all px-2 py-1">
