@@ -6,12 +6,13 @@ import { useDraggable } from '@/hooks/useDraggable'
 interface Props {
   boardId: string
   userId: string
-  cameraStream: MediaStream | null
+  cameraStreamRef: React.RefObject<MediaStream | null>
+  cameraPositionRef: React.RefObject<{ x: number; y: number; size: number }>
 }
 
 type RecordingState = 'idle' | 'recording' | 'paused' | 'uploading'
 
-export default function Recorder({ boardId, userId, cameraStream }: Props) {
+export default function Recorder({ boardId, userId, cameraStreamRef, cameraPositionRef }: Props) {
   const [state, setState] = useState<RecordingState>('idle')
   const [duration, setDuration] = useState(0)
   const [error, setError] = useState<string | null>(null)
@@ -39,34 +40,72 @@ export default function Recorder({ boardId, userId, cameraStream }: Props) {
     composite.height = excalidrawCanvas.height
     compositeCanvasRef.current = composite
 
-    let cameraVideo: HTMLVideoElement | null = null
-    if (cameraStream) {
-      cameraVideo = document.createElement('video')
-      cameraVideo.srcObject = cameraStream
-      cameraVideo.play()
-      cameraVideoRef.current = cameraVideo
-    }
-
     const draw = () => {
       const ctx = composite.getContext('2d')
       if (!ctx) return
-      ctx.drawImage(excalidrawCanvas, 0, 0, composite.width, composite.height)
-      if (cameraVideo && cameraVideo.readyState >= 2) {
-        const camW = Math.floor(composite.width * 0.22)
-        const camH = Math.floor(camW * (9 / 16))
-        const x = composite.width - camW - 20
-        const y = composite.height - camH - 20
-        ctx.save()
-        ctx.beginPath()
-        ctx.roundRect(x, y, camW, camH, 12)
-        ctx.clip()
-        ctx.drawImage(cameraVideo, x, y, camW, camH)
-        ctx.restore()
-        ctx.strokeStyle = 'rgba(255,255,255,0.6)'
-        ctx.lineWidth = 2
-        ctx.beginPath()
-        ctx.roundRect(x, y, camW, camH, 12)
-        ctx.stroke()
+      // 先填充白色背景
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, 0, composite.width, composite.height)
+      // 读取 Excalidraw 所有 canvas 层并叠加
+      const allCanvases = document.querySelectorAll('.excalidraw canvas')
+      allCanvases.forEach((canvas) => {
+        const c = canvas as HTMLCanvasElement
+        if (c.width > 0 && c.height > 0) {
+          try {
+            ctx.drawImage(c, 0, 0, composite.width, composite.height)
+          } catch {
+            // 跨域或空 canvas 忽略
+          }
+        }
+      })
+      const camStream = cameraStreamRef.current
+      if (camStream && camStream.active) {
+        // 实时获取或创建 video 元素
+        if (!cameraVideoRef.current || cameraVideoRef.current.srcObject !== camStream) {
+          const video = document.createElement('video')
+          video.srcObject = camStream
+          video.autoplay = true
+          video.muted = true
+          video.playsInline = true
+          video.play()
+          cameraVideoRef.current = video
+        }
+        const cameraVideo = cameraVideoRef.current
+        if (cameraVideo && cameraVideo.readyState >= 2) {
+          // 读取气泡当前位置和大小
+          const { x: bubbleX, y: bubbleY, size: bubbleSize } = cameraPositionRef.current
+          const diameter = bubbleSize
+          const radius = diameter / 2
+          // 将屏幕坐标转换为画布坐标（画布可能缩放）
+          const scaleX = composite.width / window.innerWidth
+          const scaleY = composite.height / window.innerHeight
+          const cx = (bubbleX + radius) * scaleX
+          const cy = (bubbleY + radius) * scaleY
+          const r = radius * Math.min(scaleX, scaleY)
+
+          ctx.save()
+          ctx.beginPath()
+          ctx.arc(cx, cy, r, 0, Math.PI * 2)
+          ctx.clip()
+
+          const videoAspect = cameraVideo.videoWidth / (cameraVideo.videoHeight || 1)
+          let sx = 0, sy = 0, sw = cameraVideo.videoWidth, sh = cameraVideo.videoHeight
+          if (videoAspect > 1) {
+            sw = cameraVideo.videoHeight
+            sx = (cameraVideo.videoWidth - sw) / 2
+          } else {
+            sh = cameraVideo.videoWidth
+            sy = (cameraVideo.videoHeight - sh) / 2
+          }
+          ctx.drawImage(cameraVideo, sx, sy, sw, sh, cx - r, cy - r, r * 2, r * 2)
+          ctx.restore()
+
+          ctx.beginPath()
+          ctx.arc(cx, cy, r, 0, Math.PI * 2)
+          ctx.strokeStyle = 'rgba(255,255,255,0.8)'
+          ctx.lineWidth = 3
+          ctx.stroke()
+        }
       }
       animFrameRef.current = requestAnimationFrame(draw)
     }
@@ -106,7 +145,7 @@ export default function Recorder({ boardId, userId, cameraStream }: Props) {
       setError('启动失败，请检查麦克风权限')
       console.error(err)
     }
-  }, [cameraStream])
+  }, [])
 
   const pauseRecording = useCallback(() => {
     mediaRecorderRef.current?.pause()

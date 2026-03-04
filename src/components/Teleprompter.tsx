@@ -4,15 +4,21 @@ import { useDraggable } from '@/hooks/useDraggable'
 
 export default function Teleprompter() {
   const [visible, setVisible] = useState(false)
-  const [text, setText] = useState('')
+  const [text, setText] = useState(() => {
+    if (typeof window === 'undefined') return ''
+    return localStorage.getItem('teleprompter-text') ?? ''
+  })
   const [opacity, setOpacity] = useState(0.95)
   const [speed, setSpeed] = useState(1)
   const [scrolling, setScrolling] = useState(false)
   const [width, setWidth] = useState(400)
+  const [height, setHeight] = useState(280)
   const scrollRef = useRef<HTMLTextAreaElement | null>(null)
   const isScrollingRef = useRef(false)
   const animRef = useRef<number | null>(null)
-  const { pos, onDragStart, wasDragged } = useDraggable(
+  const speedRef = useRef(speed)
+  const scrollAccRef = useRef(0)
+  const { pos, onDragStart, wasDragged, setPos } = useDraggable(
     typeof window !== 'undefined' ? window.innerWidth / 2 - 200 : 200,
     typeof window !== 'undefined' ? window.innerHeight - 320 : 400
   )
@@ -26,13 +32,17 @@ export default function Teleprompter() {
   }
 
   const startScroll = () => {
-    console.log('startScroll called, scrollRef:', scrollRef.current)
     isScrollingRef.current = true
+    scrollAccRef.current = 0
     const step = () => {
       const el = scrollRef.current
-      console.log('step called, isScrolling:', isScrollingRef.current, 'el:', el, 'scrollTop:', el?.scrollTop, 'scrollHeight:', el?.scrollHeight, 'clientHeight:', el?.clientHeight)
       if (!isScrollingRef.current || !el) return
-      el.scrollTop += speed * 0.8
+      scrollAccRef.current += speedRef.current * 0.3
+      const pixels = Math.floor(scrollAccRef.current)
+      if (pixels > 0) {
+        el.scrollTop += pixels
+        scrollAccRef.current -= pixels
+      }
       if (el.scrollTop + el.clientHeight >= el.scrollHeight - 2) {
         isScrollingRef.current = false
         setScrolling(false)
@@ -46,6 +56,14 @@ export default function Teleprompter() {
   useEffect(() => {
     return () => stopScroll()
   }, [])
+
+  useEffect(() => {
+    localStorage.setItem('teleprompter-text', text)
+  }, [text])
+
+  useEffect(() => {
+    localStorage.setItem('teleprompter-text', text)
+  }, [text])
 
   return (
     <div
@@ -74,12 +92,18 @@ export default function Teleprompter() {
             // 只有点标题栏才拖，内部控件阻止冒泡
           }}
           style={{
-            width, background: `rgba(255,255,255,${opacity})`,
-            borderRadius: 12, overflow: 'hidden',
+            width,
+            height,
+            minWidth: 260,
+            minHeight: 200,
+            background: `rgba(255,255,255,${opacity})`,
+            borderRadius: 12,
+            overflow: 'hidden',
             boxShadow: '0 4px 24px rgba(0,0,0,0.12)',
             border: `1px solid rgba(0,0,0,${opacity * 0.15})`,
             display: 'flex', flexDirection: 'column',
             cursor: 'default',
+            position: 'relative',
           }}
         >
           {/* 标题栏是拖拽区，不阻止冒泡 */}
@@ -114,13 +138,15 @@ export default function Teleprompter() {
             onTouchStart={e => e.stopPropagation()}
             style={{
               width: '100%',
-              height: 200,
+              flex: 1,
               padding: '12px 16px',
               background: 'transparent',
               border: 'none', outline: 'none', resize: 'none',
               color: '#111827', fontSize: '1rem', lineHeight: 1.7,
               fontFamily: 'inherit', boxSizing: 'border-box', cursor: 'text',
-              display: 'block', overflowY: 'auto', flexShrink: 0,
+              display: 'block', overflowY: 'auto',
+              height: 0,
+              minHeight: 0,
             }}
           />
           {/* 控制栏 - 阻止冒泡 */}
@@ -144,18 +170,16 @@ export default function Teleprompter() {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ color: '#9ca3af', fontSize: '0.68rem', width: 36 }}>速度</span>
-              <input type="range" min={0.2} max={5} step={0.2} value={speed}
-                onChange={e => setSpeed(Number(e.target.value))}
+              <input type="range" min={0.1} max={5} step={0.1} value={speed}
+                onChange={e => {
+                  const v = Number(e.target.value)
+                  setSpeed(v)
+                  speedRef.current = v
+                }}
                 style={{ flex: 1, accentColor: '#6366f1' }} />
               <span style={{ color: '#9ca3af', fontSize: '0.68rem', width: 28, textAlign: 'right' }}>
                 {speed.toFixed(1)}x
               </span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ color: '#9ca3af', fontSize: '0.68rem', width: 36 }}>宽度</span>
-              <input type="range" min={260} max={700} step={10} value={width}
-                onChange={e => setWidth(Number(e.target.value))}
-                style={{ flex: 1, accentColor: '#6366f1' }} />
             </div>
             <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
               <button
@@ -190,6 +214,54 @@ export default function Teleprompter() {
               >{scrolling ? '暂停滚动' : '开始滚动'}</button>
             </div>
           </div>
+          {/* Resize handles */}
+          {[
+            { cursor: 'n-resize',  top: 0,    left: 8,   right: 8,  height: 6, width: undefined, dir: 'n' },
+            { cursor: 's-resize',  bottom: 0, left: 8,   right: 8,  height: 6, width: undefined, dir: 's' },
+            { cursor: 'w-resize',  left: 0,   top: 8,    bottom: 8, width: 6,  height: undefined, dir: 'w' },
+            { cursor: 'e-resize',  right: 0,  top: 8,    bottom: 8, width: 6,  height: undefined, dir: 'e' },
+            { cursor: 'nw-resize', top: 0,    left: 0,   width: 12, height: 12, dir: 'nw' },
+            { cursor: 'ne-resize', top: 0,    right: 0,  width: 12, height: 12, dir: 'ne' },
+            { cursor: 'sw-resize', bottom: 0, left: 0,   width: 12, height: 12, dir: 'sw' },
+            { cursor: 'se-resize', bottom: 0, right: 0,  width: 12, height: 12, dir: 'se' },
+          ].map(({ cursor, dir, ...style }) => (
+            <div
+              key={dir}
+              onMouseDown={e => {
+                e.stopPropagation()
+                e.preventDefault()
+                const startX = e.clientX
+                const startY = e.clientY
+                const startW = width
+                const startH = height
+                const startPosX = pos.x
+                const startPosY = pos.y
+                const onMove = (ev: MouseEvent) => {
+                  const dx = ev.clientX - startX
+                  const dy = ev.clientY - startY
+                  const newW = dir.includes('e') ? Math.max(260, startW + dx) : dir.includes('w') ? Math.max(260, startW - dx) : startW
+                  const newH = dir.includes('s') ? Math.max(200, startH + dy) : dir.includes('n') ? Math.max(200, startH - dy) : startH
+                  const newX = dir.includes('w') ? startPosX + (startW - newW) : startPosX
+                  const newY = dir.includes('n') ? startPosY + (startH - newH) : startPosY
+                  if (dir.includes('e') || dir.includes('w')) setWidth(newW)
+                  if (dir.includes('s') || dir.includes('n')) setHeight(newH)
+                  if (dir.includes('w') || dir.includes('n')) setPos({ x: newX, y: newY })
+                }
+                const onUp = () => {
+                  document.removeEventListener('mousemove', onMove)
+                  document.removeEventListener('mouseup', onUp)
+                }
+                document.addEventListener('mousemove', onMove)
+                document.addEventListener('mouseup', onUp)
+              }}
+              style={{
+                position: 'absolute',
+                cursor,
+                zIndex: 10,
+                ...style,
+              }}
+            />
+          ))}
         </div>
       )}
     </div>

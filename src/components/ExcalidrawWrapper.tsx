@@ -71,7 +71,8 @@ export default function ExcalidrawWrapper({ boardId }: Props) {
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved')
   const [collabUsers, setCollabUsers] = useState<CollabUser[]>([])
   const [userId, setUserId] = useState<string | null>(null)
-  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null)
+  const cameraStreamRef = useRef<MediaStream | null>(null)
+  const cameraPositionRef = useRef<{ x: number; y: number; size: number }>({ x: 0, y: 0, size: 120 })
   const excalidrawAPIRef = useRef<ExcalidrawImperativeAPI | null>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const boardIdRef = useRef<string | null>(null)
@@ -276,8 +277,16 @@ export default function ExcalidrawWrapper({ boardId }: Props) {
 
       {userId && (
         <>
-          <CameraFloat onStreamChange={setCameraStream} />
-          <Recorder boardId={boardId} userId={userId} cameraStream={cameraStream} />
+          <CameraFloat
+            onStreamChange={(stream) => { cameraStreamRef.current = stream }}
+            onPositionChange={(x, y, size) => { cameraPositionRef.current = { x, y, size } }}
+          />
+          <Recorder
+            boardId={boardId}
+            userId={userId}
+            cameraStreamRef={cameraStreamRef}
+            cameraPositionRef={cameraPositionRef}
+          />
         </>
       )}
       <Teleprompter />

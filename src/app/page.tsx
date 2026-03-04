@@ -11,10 +11,20 @@ interface Board {
   share_token: string
 }
 
+interface Recording {
+  id: string
+  title: string
+  public_url: string
+  duration_seconds: number
+  created_at: string
+}
+
 export default function Home() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [boards, setBoards] = useState<Board[]>([])
+  const [recordings, setRecordings] = useState<Record<string, Recording[]>>({})
+  const [expandedRecordings, setExpandedRecordings] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const [newTitle, setNewTitle] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -41,6 +51,35 @@ export default function Home() {
       .eq('user_id', userId)
       .order('updated_at', { ascending: false })
     setBoards(data ?? [])
+  }
+
+  const loadRecordings = async (boardId: string) => {
+    if (recordings[boardId]) {
+      setExpandedRecordings(prev => prev === boardId ? null : boardId)
+      return
+    }
+    const { data } = await supabase
+      .from('recordings')
+      .select('id, title, public_url, duration_seconds, created_at')
+      .eq('board_id', boardId)
+      .order('created_at', { ascending: false })
+    setRecordings(prev => ({ ...prev, [boardId]: data ?? [] }))
+    setExpandedRecordings(boardId)
+  }
+
+  const deleteRecording = async (recordingId: string, boardId: string) => {
+    if (!confirm('确定删除这个录像吗？')) return
+    await supabase.from('recordings').delete().eq('id', recordingId)
+    setRecordings(prev => ({
+      ...prev,
+      [boardId]: prev[boardId].filter(r => r.id !== recordingId)
+    }))
+  }
+
+  const formatDuration = (secs: number) => {
+    const m = Math.floor(secs / 60).toString().padStart(2, '0')
+    const s = (secs % 60).toString().padStart(2, '0')
+    return `${m}:${s}`
   }
 
   const handleLogin = async () => {
@@ -200,6 +239,53 @@ export default function Home() {
                   >
                     删除
                   </button>
+                </div>
+
+                {/* 录像列表 */}
+                <div onClick={e => e.stopPropagation()}>
+                  <button
+                    onClick={() => loadRecordings(board.id)}
+                    className="w-full text-left text-xs text-gray-600 hover:text-gray-400 pt-2 mt-1 border-t border-gray-800 transition-colors"
+                  >
+                    {expandedRecordings === board.id ? '▲ 收起录像' : '▼ 查看录像'}
+                  </button>
+
+                  {expandedRecordings === board.id && (
+                    <div className="mt-2 flex flex-col gap-2">
+                      {!recordings[board.id] ? (
+                        <p className="text-xs text-gray-600">加载中...</p>
+                      ) : recordings[board.id].length === 0 ? (
+                        <p className="text-xs text-gray-600">暂无录像</p>
+                      ) : (
+                        recordings[board.id].map(rec => (
+                          <div key={rec.id} className="flex items-center justify-between gap-2 bg-gray-800 rounded-lg px-3 py-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs text-white truncate">{rec.title}</p>
+                              <p className="text-xs text-gray-500">
+                                {formatDuration(rec.duration_seconds)} · {formatDate(rec.created_at)}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <a
+                                href={rec.public_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-blue-400 hover:text-blue-300"
+                              >
+                                播放
+                              </a>
+                              <button
+                                onClick={() => deleteRecording(rec.id, board.id)}
+                                className="text-xs text-gray-600 hover:text-red-400"
+                              >
+                                删除
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

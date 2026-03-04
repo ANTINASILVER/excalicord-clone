@@ -4,14 +4,19 @@ import { useDraggable } from '@/hooks/useDraggable'
 
 interface Props {
   onStreamChange?: (stream: MediaStream | null) => void
+  onPositionChange?: (x: number, y: number, size: number) => void
 }
 
-export default function CameraFloat({ onStreamChange }: Props) {
+export default function CameraFloat({ onStreamChange, onPositionChange }: Props) {
   const [enabled, setEnabled] = useState(false)
   const [size, setSize] = useState(120)
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const { pos, onDragStart, wasDragged } = useDraggable(window.innerWidth - 160, window.innerHeight - 200)
+
+  useEffect(() => {
+    onPositionChange?.(pos.x, pos.y, size)
+  }, [pos.x, pos.y, size, onPositionChange])
 
   useEffect(() => {
     if (enabled) {

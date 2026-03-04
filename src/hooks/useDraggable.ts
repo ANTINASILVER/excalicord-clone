@@ -48,5 +48,5 @@ export function useDraggable(initialX: number, initialY: number) {
     return result
   }
 
-  return { pos, ref, onDragStart, wasDragged }
+  return { pos, ref, onDragStart, wasDragged, setPos }
 }
