@@ -80,15 +80,15 @@ export default function Recorder({ boardId, userId, cameraStream }: Props) {
       const excalidrawCanvas = getExcalidrawCanvas()
       if (!excalidrawCanvas) { setError('找不到画布'); return }
 
-      let micStream: MediaStream
-      try {
-        micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-      } catch (micErr) {
-        console.error('mic error:', micErr)
-        setError('请在浏览器设置中允许麦克风权限后刷新页面')
-        setState('idle')
+      const permissionStatus = await navigator.permissions.query({ name: 'microphone' as PermissionName })
+      console.log('mic permission:', permissionStatus.state)
+
+      if (permissionStatus.state === 'denied') {
+        setError('麦克风权限被拒绝，请在浏览器地址栏左侧点击锁图标开启')
         return
       }
+
+      const micStream = await navigator.mediaDevices.getUserMedia({ audio: true })
       const composite = startCompositing(excalidrawCanvas)
       const canvasStream = composite.captureStream(30)
       micStream.getAudioTracks().forEach(t => canvasStream.addTrack(t))

@@ -3,6 +3,7 @@ import { useRef, useEffect, useState } from 'react'
 export function useDraggable(initialX: number, initialY: number) {
   const [pos, setPos] = useState({ x: initialX, y: initialY })
   const dragging = useRef(false)
+  const didDrag = useRef(false)
   const offset = useRef({ x: 0, y: 0 })
   const ref = useRef<HTMLDivElement | null>(null)
 
@@ -11,6 +12,7 @@ export function useDraggable(initialX: number, initialY: number) {
       if (!dragging.current) return
       e.stopPropagation()
       e.preventDefault()
+      didDrag.current = true
       const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
       const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
       setPos({
@@ -33,12 +35,18 @@ export function useDraggable(initialX: number, initialY: number) {
 
   const onDragStart = (e: React.MouseEvent | React.TouchEvent) => {
     e.stopPropagation()
-    e.preventDefault()
     dragging.current = true
+    didDrag.current = false
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
     offset.current = { x: clientX - pos.x, y: clientY - pos.y }
   }
 
-  return { pos, ref, onDragStart }
+  const wasDragged = () => {
+    const result = didDrag.current
+    didDrag.current = false
+    return result
+  }
+
+  return { pos, ref, onDragStart, wasDragged }
 }

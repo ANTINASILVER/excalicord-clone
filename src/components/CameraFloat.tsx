@@ -11,7 +11,7 @@ export default function CameraFloat({ onStreamChange }: Props) {
   const [size, setSize] = useState(120)
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
-  const { pos, onDragStart } = useDraggable(window.innerWidth - 160, window.innerHeight - 200)
+  const { pos, onDragStart, wasDragged } = useDraggable(window.innerWidth - 160, window.innerHeight - 200)
 
   useEffect(() => {
     if (enabled) {
@@ -34,19 +34,22 @@ export default function CameraFloat({ onStreamChange }: Props) {
   }, [enabled])
 
   return (
-    <div style={{ position: 'absolute', left: pos.x, top: pos.y, zIndex: 25, userSelect: 'none' }}>
+    <div
+      onMouseDown={onDragStart}
+      onTouchStart={onDragStart}
+      style={{
+        position: 'absolute', left: pos.x, top: pos.y,
+        zIndex: 25, userSelect: 'none', cursor: 'grab',
+      }}
+    >
       {enabled ? (
         <div style={{ position: 'relative', display: 'inline-block' }}>
-          {/* 可拖拽气泡 */}
           <div
             style={{
               width: size, height: size, borderRadius: '50%',
               overflow: 'hidden', border: '3px solid rgba(0,0,0,0.15)',
               boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-              cursor: 'grab',
             }}
-            onMouseDown={onDragStart}
-            onTouchStart={onDragStart}
           >
             <video
               ref={videoRef}
@@ -56,9 +59,8 @@ export default function CameraFloat({ onStreamChange }: Props) {
               style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }}
             />
           </div>
-
-          {/* 关闭按钮，在气泡外右上角 */}
           <button
+            onMouseDown={e => e.stopPropagation()}
             onClick={() => setEnabled(false)}
             style={{
               position: 'absolute', top: -8, right: -8,
@@ -69,12 +71,9 @@ export default function CameraFloat({ onStreamChange }: Props) {
               boxShadow: '0 1px 4px rgba(0,0,0,0.15)', zIndex: 10,
             }}
           >✕</button>
-
-          {/* 大小调节滑块，在气泡正下方 */}
           <div style={{
             position: 'absolute', bottom: -28, left: '50%',
             transform: 'translateX(-50%)', width: size * 0.9,
-            display: 'flex', alignItems: 'center',
           }}>
             <input
               type="range" min={80} max={240} value={size}
@@ -87,18 +86,17 @@ export default function CameraFloat({ onStreamChange }: Props) {
         </div>
       ) : (
         <button
-          onClick={() => setEnabled(true)}
+          onClick={() => { if (!wasDragged()) setEnabled(true) }}
           style={{
-            width: 44, height: 44, borderRadius: '50%',
+            height: 36, padding: '0 14px', borderRadius: 18,
             background: 'white', border: '1px solid #e5e7eb',
-            color: '#374151', fontSize: '1.1rem', cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+            color: '#374151', fontSize: '1rem',
+            cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontFamily: 'PingFang SC, 苹方, sans-serif',
           }}
           title="开启摄像头"
-        >
-          摄像头
-        </button>
+        >◉</button>
       )}
     </div>
   )
