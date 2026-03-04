@@ -80,7 +80,15 @@ export default function Recorder({ boardId, userId, cameraStream }: Props) {
       const excalidrawCanvas = getExcalidrawCanvas()
       if (!excalidrawCanvas) { setError('找不到画布'); return }
 
-      const micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+      let micStream: MediaStream
+      try {
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+      } catch (micErr) {
+        console.error('mic error:', micErr)
+        setError('请在浏览器设置中允许麦克风权限后刷新页面')
+        setState('idle')
+        return
+      }
       const composite = startCompositing(excalidrawCanvas)
       const canvasStream = composite.captureStream(30)
       micStream.getAudioTracks().forEach(t => canvasStream.addTrack(t))
@@ -151,14 +159,14 @@ export default function Recorder({ boardId, userId, cameraStream }: Props) {
       onTouchStart={onDragStart}
       style={{
         position: 'absolute', left: pos.x, top: pos.y, zIndex: 20,
-        background: '#1f2937', border: '1px solid #374151',
+        background: 'white', border: '1px solid #e5e7eb',
         borderRadius: 12, padding: '10px 14px',
         display: 'flex', flexDirection: 'column', gap: 8,
-        minWidth: 190, boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+        minWidth: 190, boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
         cursor: 'grab', userSelect: 'none',
       }}
     >
-      {error && <p style={{ fontSize: '0.7rem', color: '#f87171', margin: 0 }}>{error}</p>}
+      {error && <p style={{ fontSize: '0.7rem', color: '#ef4444', margin: 0 }}>{error}</p>}
 
       {state !== 'idle' && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -167,10 +175,10 @@ export default function Recorder({ boardId, userId, cameraStream }: Props) {
             background: state === 'recording' ? '#ef4444' : '#f59e0b',
             display: 'inline-block',
           }} />
-          <span style={{ fontSize: '0.85rem', color: '#e5e7eb', fontVariantNumeric: 'tabular-nums' }}>
+          <span style={{ fontSize: '0.85rem', color: '#374151', fontVariantNumeric: 'tabular-nums' }}>
             {formatDuration(duration)}
           </span>
-          <span style={{ fontSize: '0.7rem', color: '#6b7280' }}>
+          <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>
             {state === 'uploading' ? '上传中...' : state === 'paused' ? '已暂停' : '录制中'}
           </span>
         </div>
@@ -187,11 +195,11 @@ export default function Recorder({ boardId, userId, cameraStream }: Props) {
         {state === 'recording' && (<>
           <button onClick={pauseRecording} style={{
             flex: 1, padding: '6px 0', borderRadius: 8, border: 'none',
-            background: '#374151', color: 'white', fontSize: '0.8rem', cursor: 'pointer',
+            background: '#f3f4f6', color: '#374151', fontSize: '0.8rem', cursor: 'pointer',
           }}>⏸ 暂停</button>
           <button onClick={stopAndUpload} style={{
             flex: 1, padding: '6px 0', borderRadius: 8, border: 'none',
-            background: '#6b7280', color: 'white', fontSize: '0.8rem', cursor: 'pointer',
+            background: '#e5e7eb', color: '#374151', fontSize: '0.8rem', cursor: 'pointer',
           }}>■ 结束</button>
         </>)}
         {state === 'paused' && (<>
@@ -201,13 +209,13 @@ export default function Recorder({ boardId, userId, cameraStream }: Props) {
           }}>● 继续</button>
           <button onClick={stopAndUpload} style={{
             flex: 1, padding: '6px 0', borderRadius: 8, border: 'none',
-            background: '#6b7280', color: 'white', fontSize: '0.8rem', cursor: 'pointer',
+            background: '#e5e7eb', color: '#374151', fontSize: '0.8rem', cursor: 'pointer',
           }}>■ 结束</button>
         </>)}
         {state === 'uploading' && (
           <button disabled style={{
             flex: 1, padding: '6px 0', borderRadius: 8, border: 'none',
-            background: '#374151', color: '#6b7280', fontSize: '0.8rem', cursor: 'not-allowed',
+            background: '#f3f4f6', color: '#9ca3af', fontSize: '0.8rem', cursor: 'not-allowed',
           }}>上传中...</button>
         )}
       </div>

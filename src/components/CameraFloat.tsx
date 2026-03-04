@@ -36,55 +36,63 @@ export default function CameraFloat({ onStreamChange }: Props) {
   return (
     <div style={{ position: 'absolute', left: pos.x, top: pos.y, zIndex: 25, userSelect: 'none' }}>
       {enabled ? (
-        <div
-          style={{
-            width: size, height: size, borderRadius: '50%',
-            overflow: 'hidden', border: '3px solid rgba(255,255,255,0.7)',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
-            cursor: 'grab', position: 'relative',
-          }}
-          onMouseDown={onDragStart}
-          onTouchStart={onDragStart}
-        >
-          <video
-            ref={videoRef}
-            autoPlay
-            muted
-            playsInline
-            style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }}
-          />
-          {/* 关闭按钮 */}
+        <div style={{ position: 'relative', display: 'inline-block' }}>
+          {/* 可拖拽气泡 */}
+          <div
+            style={{
+              width: size, height: size, borderRadius: '50%',
+              overflow: 'hidden', border: '3px solid rgba(0,0,0,0.15)',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+              cursor: 'grab',
+            }}
+            onMouseDown={onDragStart}
+            onTouchStart={onDragStart}
+          >
+            <video
+              ref={videoRef}
+              autoPlay
+              muted
+              playsInline
+              style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }}
+            />
+          </div>
+
+          {/* 关闭按钮，在气泡外右上角 */}
           <button
-            onMouseDown={e => e.stopPropagation()}
             onClick={() => setEnabled(false)}
             style={{
-              position: 'absolute', top: 4, right: 4,
-              width: 20, height: 20, borderRadius: '50%',
-              background: 'rgba(0,0,0,0.6)', border: 'none',
-              color: 'white', fontSize: '0.6rem', cursor: 'pointer',
+              position: 'absolute', top: -8, right: -8,
+              width: 24, height: 24, borderRadius: '50%',
+              background: 'white', border: '1px solid #e5e7eb',
+              color: '#6b7280', fontSize: '0.65rem', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 1px 4px rgba(0,0,0,0.15)', zIndex: 10,
             }}
           >✕</button>
-          {/* 调整大小 */}
-          <input
-            type="range" min={80} max={240} value={size}
-            onMouseDown={e => e.stopPropagation()}
-            onChange={e => setSize(Number(e.target.value))}
-            style={{
-              position: 'absolute', bottom: -18, left: '50%',
-              transform: 'translateX(-50%)', width: size * 0.8,
-              opacity: 0.7,
-            }}
-          />
+
+          {/* 大小调节滑块，在气泡正下方 */}
+          <div style={{
+            position: 'absolute', bottom: -28, left: '50%',
+            transform: 'translateX(-50%)', width: size * 0.9,
+            display: 'flex', alignItems: 'center',
+          }}>
+            <input
+              type="range" min={80} max={240} value={size}
+              onChange={e => setSize(Number(e.target.value))}
+              onMouseDown={e => e.stopPropagation()}
+              onTouchStart={e => e.stopPropagation()}
+              style={{ width: '100%', cursor: 'pointer', accentColor: '#6366f1' }}
+            />
+          </div>
         </div>
       ) : (
         <button
           onClick={() => setEnabled(true)}
           style={{
             width: 44, height: 44, borderRadius: '50%',
-            background: '#1f2937', border: '1px solid #374151',
-            color: '#9ca3af', fontSize: '1.2rem', cursor: 'pointer',
-            boxShadow: '0 2px 10px rgba(0,0,0,0.4)',
+            background: 'white', border: '1px solid #e5e7eb',
+            color: '#374151', fontSize: '1.1rem', cursor: 'pointer',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
           title="开启摄像头"

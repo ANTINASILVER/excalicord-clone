@@ -7,6 +7,7 @@ import type { ExcalidrawElement } from '@excalidraw/excalidraw/element/types'
 import type { AppState, ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types'
 import Recorder from './Recorder'
 import CameraFloat from './CameraFloat'
+import Teleprompter from './Teleprompter'
 
 function ShareButton({ boardId }: { boardId: string }) {
   const [copied, setCopied] = useState(false)
@@ -279,6 +280,7 @@ export default function ExcalidrawWrapper({ boardId }: Props) {
           <Recorder boardId={boardId} userId={userId} cameraStream={cameraStream} />
         </>
       )}
+      <Teleprompter />
 
       {/* 在线用户头像列表 */}
       {collabUsers.length > 0 && (
