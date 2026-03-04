@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import { useDraggable } from '@/hooks/useDraggable'
+import { usePinchZoom } from '@/hooks/usePinchZoom'
 
 interface Props {
   onStreamChange?: (stream: MediaStream | null) => void
@@ -16,6 +17,8 @@ export default function CameraFloat({ onStreamChange, onPositionChange }: Props)
     typeof window !== 'undefined' ? window.innerWidth - 160 : 200,
     typeof window !== 'undefined' ? window.innerHeight - 200 : 400
   )
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  usePinchZoom(containerRef, size, setSize, 60, 300)
 
   useEffect(() => {
     onPositionChange?.(pos.x, pos.y, size)
@@ -61,7 +64,10 @@ export default function CameraFloat({ onStreamChange, onPositionChange }: Props)
       }}
     >
       {enabled ? (
-        <div style={{ position: 'relative', width: size, height: size }}>
+        <div
+          ref={containerRef}
+          style={{ position: 'relative', width: size, height: size }}
+        >
           {/* 圆形视频 */}
           <div style={{
             width: size, height: size, borderRadius: '50%',

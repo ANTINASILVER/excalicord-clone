@@ -1,6 +1,7 @@
 'use client'
 import { useRef, useState, useEffect } from 'react'
 import { useDraggable } from '@/hooks/useDraggable'
+import { usePinchZoom } from '@/hooks/usePinchZoom'
 
 export default function Teleprompter() {
   const [visible, setVisible] = useState(false)
@@ -22,6 +23,8 @@ export default function Teleprompter() {
     typeof window !== 'undefined' ? window.innerWidth / 2 - 200 : 200,
     typeof window !== 'undefined' ? window.innerHeight - 320 : 400
   )
+  const teleprompterRef = useRef<HTMLDivElement | null>(null)
+  usePinchZoom(teleprompterRef, width, setWidth, 260, 700)
 
   const stopScroll = () => {
     isScrollingRef.current = false
@@ -88,6 +91,7 @@ export default function Teleprompter() {
         >提词器</button>
       ) : (
         <div
+          ref={teleprompterRef}
           onMouseDown={e => {
             // 只有点标题栏才拖，内部控件阻止冒泡
           }}

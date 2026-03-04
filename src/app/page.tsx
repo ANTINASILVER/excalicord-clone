@@ -9,6 +9,7 @@ interface Board {
   title: string
   updated_at: string
   share_token: string
+  user_id: string
 }
 
 interface Recording {
@@ -45,12 +46,29 @@ export default function Home() {
   }, [])
 
   const loadBoards = async (userId: string) => {
-    const { data } = await supabase
+    // 自己创建的画布
+    const { data: ownBoards } = await supabase
       .from('boards')
-      .select('id, title, updated_at, share_token')
+      .select('id, title, updated_at, share_token, user_id')
       .eq('user_id', userId)
       .order('updated_at', { ascending: false })
-    setBoards(data ?? [])
+
+    // 通过分享加入的画布
+    const { data: memberBoards } = await supabase
+      .from('board_members')
+      .select('board_id, boards(id, title, updated_at, share_token, user_id)')
+      .eq('user_id', userId)
+
+    const sharedBoards = (memberBoards ?? [])
+      .map((m: { board_id: string; boards: unknown }) => m.boards)
+      .filter((b): b is Board => !!b && typeof b === 'object' && 'id' in b)
+      .filter(b => b.user_id !== userId) // 排除自己创建的
+
+    const allBoards = [
+      ...(ownBoards ?? []),
+      ...sharedBoards,
+    ]
+    setBoards(allBoards)
   }
 
   const loadRecordings = async (boardId: string) => {
@@ -214,7 +232,15 @@ export default function Home() {
                       className="font-medium bg-transparent border-b border-blue-500 text-white outline-none w-full"
                     />
                   ) : (
-                    <h3 className="font-medium text-white truncate">{board.title}</h3>
+                    <h3 className="font-medium text-white truncate flex items-center">
+                      {board.title}
+                      {board.user_id !== user?.id && (
+                        <span style={{
+                          fontSize: '0.6rem', padding: '1px 6px', borderRadius: 999,
+                          background: '#ede9fe', color: '#7c3aed', fontWeight: 500, marginLeft: 6,
+                        }}>共享</span>
+                      )}
+                    </h3>
                   )}
                   <p className="text-xs text-gray-500 mt-1">{formatDate(board.updated_at)}</p>
                 </div>
@@ -233,12 +259,14 @@ export default function Home() {
                   >
                     {copiedId === board.id ? '✓ 已复制' : '分享'}
                   </button>
-                  <button
-                    onClick={() => deleteBoard(board.id)}
-                    className="flex-1 text-xs py-1.5 rounded-md text-gray-400 hover:text-red-400 hover:bg-gray-800 transition-colors"
-                  >
-                    删除
-                  </button>
+                  {board.user_id === user?.id && (
+                    <button
+                      onClick={() => deleteBoard(board.id)}
+                      className="flex-1 text-xs py-1.5 rounded-md text-gray-400 hover:text-red-400 hover:bg-gray-800 transition-colors"
+                    >
+                      删除
+                    </button>
+                  )}
                 </div>
 
                 {/* 录像列表 */}

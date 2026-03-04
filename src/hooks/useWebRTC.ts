@@ -158,10 +158,21 @@ export function useWebRTC(boardId: string, userId: string, userName: string, use
         ))
       })
 
+      // 收到静音状态变化
+      channel.on('broadcast', { event: 'mute-state' }, ({ payload }) => {
+        setPeers(prev => prev.map(p =>
+          p.userId === payload.userId ? { ...p, isMuted: payload.isMuted } : p
+        ))
+      })
+
       // 有新用户加入
       channel.on('broadcast', { event: 'user-joined-voice' }, ({ payload }) => {
         if (payload.userId === userId) return
         initiateCall(payload.userId, payload.userName, payload.userAvatar)
+        // 更新对方的初始静音状态
+        setPeers(prev => prev.map(p =>
+          p.userId === payload.userId ? { ...p, isMuted: payload.isMuted ?? true } : p
+        ))
       })
 
       channel.subscribe(async (status) => {
@@ -170,7 +181,7 @@ export function useWebRTC(boardId: string, userId: string, userName: string, use
           channel.send({
             type: 'broadcast',
             event: 'user-joined-voice',
-            payload: { userId, userName, userAvatar },
+            payload: { userId, userName, userAvatar, isMuted: true },
           })
         }
       })
@@ -193,10 +204,16 @@ export function useWebRTC(boardId: string, userId: string, userName: string, use
     const stream = localStreamRef.current
     if (!stream) return
     const tracks = stream.getAudioTracks()
-    const currentlyMuted = !tracks[0]?.enabled  // enabled=false 表示静音
+    const currentlyMuted = !tracks[0]?.enabled
     const newMuted = !currentlyMuted
-    tracks.forEach(t => { t.enabled = !newMuted })  // 取消静音时 enabled=true
+    tracks.forEach(t => { t.enabled = !newMuted })
     setIsMuted(newMuted)
+    // 广播静音状态给所有人
+    channelRef.current?.send({
+      type: 'broadcast',
+      event: 'mute-state',
+      payload: { userId, isMuted: newMuted },
+    })
     if (newMuted) {
       channelRef.current?.send({
         type: 'broadcast',

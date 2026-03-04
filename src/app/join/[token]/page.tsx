@@ -29,6 +29,11 @@ export default function JoinPage() {
         .single()
 
       if (board) {
+        // 将该画布加入用户的 board_members 表
+        await supabase.from('board_members').upsert({
+          board_id: board.id,
+          user_id: session.user.id,
+        }, { onConflict: 'board_id,user_id' })
         router.push(`/board/${board.id}`)
       } else {
         router.push('/')
