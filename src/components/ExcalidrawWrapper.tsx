@@ -8,6 +8,7 @@ import type { AppState, ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/t
 import Recorder from './Recorder'
 import CameraFloat from './CameraFloat'
 import Teleprompter from './Teleprompter'
+import VoicePanel from './VoicePanel'
 
 function ShareButton({ boardId }: { boardId: string }) {
   const [copied, setCopied] = useState(false)
@@ -71,6 +72,7 @@ export default function ExcalidrawWrapper({ boardId }: Props) {
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved')
   const [collabUsers, setCollabUsers] = useState<CollabUser[]>([])
   const [userId, setUserId] = useState<string | null>(null)
+  const [userInfo, setUserInfo] = useState<{ name: string; avatar: string } | null>(null)
   const cameraStreamRef = useRef<MediaStream | null>(null)
   const cameraPositionRef = useRef<{ x: number; y: number; size: number }>({ x: 0, y: 0, size: 120 })
   const excalidrawAPIRef = useRef<ExcalidrawImperativeAPI | null>(null)
@@ -93,6 +95,10 @@ export default function ExcalidrawWrapper({ boardId }: Props) {
         avatar: session.user.user_metadata.avatar_url ?? '',
       }
       setUserId(session.user.id)
+      setUserInfo({
+        name: session.user.user_metadata.full_name ?? 'Anonymous',
+        avatar: session.user.user_metadata.avatar_url ?? '',
+      })
 
       // 加载 board
       const { data } = await supabase
@@ -287,6 +293,14 @@ export default function ExcalidrawWrapper({ boardId }: Props) {
             cameraStreamRef={cameraStreamRef}
             cameraPositionRef={cameraPositionRef}
           />
+          {userInfo && (
+            <VoicePanel
+              boardId={boardId}
+              userId={userId}
+              userName={userInfo.name}
+              userAvatar={userInfo.avatar}
+            />
+          )}
         </>
       )}
       <Teleprompter />
