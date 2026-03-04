@@ -66,6 +66,7 @@ export default function CameraFloat({ onStreamChange, onPositionChange }: Props)
       {enabled ? (
         <div
           ref={containerRef}
+          data-floating="true"
           style={{ position: 'relative', width: size, height: size }}
         >
           {/* 圆形视频 */}

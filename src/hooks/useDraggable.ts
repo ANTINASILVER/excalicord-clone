@@ -10,6 +10,11 @@ export function useDraggable(initialX: number, initialY: number) {
   useEffect(() => {
     const onMove = (e: MouseEvent | TouchEvent) => {
       if (!dragging.current) return
+      // 双指时跳过拖拽，让 pinch zoom 处理
+      if ('touches' in e && e.touches.length >= 2) {
+        dragging.current = false
+        return
+      }
       e.stopPropagation()
       e.preventDefault()
       didDrag.current = true

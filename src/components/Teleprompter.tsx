@@ -92,6 +92,7 @@ export default function Teleprompter() {
       ) : (
         <div
           ref={teleprompterRef}
+          data-floating="true"
           onMouseDown={e => {
             // 只有点标题栏才拖，内部控件阻止冒泡
           }}

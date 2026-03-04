@@ -27,7 +27,12 @@ export default function BoardPage() {
 
   useEffect(() => {
     const preventZoom = (e: TouchEvent) => {
-      if (e.touches.length >= 2) e.preventDefault()
+      if (e.touches.length >= 2) {
+        const target = e.target as HTMLElement
+        // 如果触摸目标在我们的浮动组件内，不阻止（让组件自己处理）
+        if (target.closest('[data-floating]')) return
+        e.preventDefault()
+      }
     }
     document.addEventListener('touchmove', preventZoom, { passive: false })
     return () => document.removeEventListener('touchmove', preventZoom)
