@@ -1,7 +1,8 @@
 'use client'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useWebRTC } from '@/hooks/useWebRTC'
 import { useDraggable } from '@/hooks/useDraggable'
+import { supabase } from '@/lib/supabase'
 
 interface Props {
   boardId: string
@@ -10,18 +11,65 @@ interface Props {
   userAvatar: string
 }
 
+interface RoomUser {
+  userId: string
+  userName: string
+  userAvatar: string
+}
+
+function MicIcon({ active, muted }: { active: boolean; muted: boolean }) {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+      style={{ flexShrink: 0, opacity: muted ? 0.3 : 1, transition: 'opacity 0.2s' }}>
+      {muted ? (
+        <>
+          <path d="M12 1a4 4 0 0 1 4 4v4a4 4 0 0 1-8 0V5a4 4 0 0 1 4-4z"
+            fill={active ? '#22c55e' : '#9ca3af'} />
+          <line x1="2" y1="2" x2="22" y2="22"
+            stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round"/>
+          <path d="M8 21h8M12 17v4" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round"/>
+        </>
+      ) : (
+        <>
+          <path d="M12 1a4 4 0 0 1 4 4v4a4 4 0 0 1-8 0V5a4 4 0 0 1 4-4z"
+            fill={active ? '#22c55e' : '#9ca3af'} />
+          <path d="M19 10a7 7 0 0 1-14 0" stroke={active ? '#22c55e' : '#9ca3af'}
+            strokeWidth="2" strokeLinecap="round"/>
+          <path d="M8 21h8M12 17v4" stroke={active ? '#22c55e' : '#9ca3af'}
+            strokeWidth="2" strokeLinecap="round"/>
+        </>
+      )}
+    </svg>
+  )
+}
+
 export default function VoicePanel({ boardId, userId, userName, userAvatar }: Props) {
   const { isMuted, peers, isConnected, join, toggleMute } = useWebRTC(boardId, userId, userName, userAvatar)
   const { pos, onDragStart, wasDragged } = useDraggable(
-    typeof window !== 'undefined' ? 20 : 20,
-    typeof window !== 'undefined' ? window.innerHeight - 160 : 400
+    typeof window !== 'undefined' ? window.innerWidth / 2 - 100 : 200,
+    16
   )
+  const [roomUsers, setRoomUsers] = useState<RoomUser[]>([])
 
+  // 加载画布内的协作者（从 Supabase presence 或直接用 peers + 自己）
   useEffect(() => {
-    join()
-  }, [join])
+    // 自己始终在列表里
+    setRoomUsers([{ userId, userName, userAvatar }])
+  }, [userId, userName, userAvatar])
 
-  const activePeers = peers.filter(p => p.isSpeaking)
+  // 当 peers 变化时更新房间用户列表
+  useEffect(() => {
+    setRoomUsers([
+      { userId, userName, userAvatar },
+      ...peers.map(p => ({ userId: p.userId, userName: p.userName, userAvatar: p.userAvatar }))
+    ])
+  }, [peers, userId, userName, userAvatar])
+
+  const getSpeakingState = (uid: string) => {
+    if (uid === userId) return { isSpeaking: false, isMuted }
+    const peer = peers.find(p => p.userId === uid)
+    return { isSpeaking: peer?.isSpeaking ?? false, isMuted: peer?.isMuted ?? false }
+  }
 
   return (
     <div
@@ -30,71 +78,82 @@ export default function VoicePanel({ boardId, userId, userName, userAvatar }: Pr
       style={{
         position: 'absolute', left: pos.x, top: pos.y, zIndex: 25,
         userSelect: 'none', cursor: 'grab',
-        display: 'flex', flexDirection: 'column', gap: 6,
       }}
     >
-      {/* 静音切换按钮 */}
-      <button
-        onMouseDown={e => e.stopPropagation()}
-        onClick={() => { if (!wasDragged()) toggleMute() }}
-        style={{
-          height: 36, padding: '0 14px', borderRadius: 18,
-          background: isMuted ? 'white' : '#6366f1',
-          border: '1px solid #e5e7eb',
-          color: isMuted ? '#374151' : 'white',
-          fontSize: '0.75rem', fontWeight: 600,
-          cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
-          display: 'flex', alignItems: 'center', gap: 6,
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {isMuted ? '🔇 静音中' : '🎙️ 说话中'}
-      </button>
-
-      {/* 协作者语音状态 */}
-      {peers.length > 0 && (
-        <div style={{
-          background: 'white', border: '1px solid #e5e7eb',
-          borderRadius: 12, padding: '8px 12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
-          display: 'flex', flexDirection: 'column', gap: 6,
-          minWidth: 160,
-        }}
-        onMouseDown={e => e.stopPropagation()}
-        >
-          {peers.map(peer => (
-            <div key={peer.userId} style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-            }}>
+      <div style={{
+        background: 'rgba(255,255,255,0.92)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        border: '1px solid rgba(0,0,0,0.08)',
+        borderRadius: 24,
+        padding: '6px 4px',
+        display: 'flex', alignItems: 'center', gap: 4,
+        boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+      }}>
+        {roomUsers.map((user, i) => {
+          const { isSpeaking, isMuted: userMuted } = getSpeakingState(user.userId)
+          const isMe = user.userId === userId
+          return (
+            <div
+              key={user.userId}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '4px 10px',
+                borderRight: i < roomUsers.length - 1 ? '1px solid rgba(0,0,0,0.06)' : 'none',
+                background: isSpeaking ? 'rgba(34,197,94,0.08)' : 'transparent',
+                borderRadius: 14, transition: 'background 0.2s',
+              }}
+            >
               {/* 头像 */}
               <div style={{
-                width: 24, height: 24, borderRadius: '50%',
-                background: '#6366f1', overflow: 'hidden', flexShrink: 0,
-                border: peer.isSpeaking ? '2px solid #22c55e' : '2px solid transparent',
-                transition: 'border-color 0.15s',
+                width: 32, height: 32, borderRadius: '50%',
+                background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                overflow: 'hidden', flexShrink: 0,
+                border: isSpeaking ? '2px solid #22c55e' : '2px solid transparent',
+                transition: 'border-color 0.2s',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                {peer.userAvatar
-                  ? <img src={peer.userAvatar} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '0.65rem' }}>
-                      {peer.userName.charAt(0).toUpperCase()}
-                    </div>
+                {user.userAvatar
+                  ? <img src={user.userAvatar} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <span style={{ color: 'white', fontSize: '0.8rem', fontWeight: 600 }}>
+                      {user.userName.charAt(0).toUpperCase()}
+                    </span>
                 }
               </div>
+
               {/* 名字 */}
-              <span style={{ fontSize: '0.75rem', color: '#374151', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {peer.userName}
+              <span style={{
+                fontSize: '0.85rem', color: '#111827', fontWeight: 500,
+                maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
+              }}>
+                {user.userName.split(' ')[0]}
               </span>
-              {/* 说话指示 */}
-              <div style={{
-                width: 8, height: 8, borderRadius: '50%',
-                background: peer.isSpeaking ? '#22c55e' : '#e5e7eb',
-                transition: 'background 0.15s',
-                flexShrink: 0,
-              }} />
+
+              {/* 麦克风图标 */}
+              {isMe ? (
+                <button
+                  onMouseDown={e => e.stopPropagation()}
+                  onClick={() => {
+                    if (!isConnected) join()
+                    else toggleMute()
+                  }}
+                  style={{
+                    background: 'none', border: 'none', padding: 2,
+                    cursor: 'pointer', display: 'flex', alignItems: 'center',
+                    borderRadius: 6,
+                  }}
+                  title={!isConnected ? '加入语音' : isMuted ? '取消静音' : '静音'}
+                >
+                  <MicIcon active={!isMuted && isConnected} muted={!isConnected || isMuted} />
+                </button>
+              ) : (
+                <MicIcon active={isSpeaking} muted={userMuted} />
+              )}
             </div>
-          ))}
-        </div>
-      )}
+          )
+        })}
+      </div>
     </div>
   )
 }

@@ -110,6 +110,7 @@ export function useWebRTC(boardId: string, userId: string, userName: string, use
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
       // 默认静音
       stream.getAudioTracks().forEach(t => { t.enabled = false })
+      // isMuted 初始为 true，enabled = false 表示静音，这是正确的
       localStreamRef.current = stream
       startSpeakingDetection(stream)
       setIsConnected(true)
@@ -175,23 +176,35 @@ export function useWebRTC(boardId: string, userId: string, userName: string, use
       })
 
       channelRef.current = channel
-    } catch (err) {
-      console.error('WebRTC join error:', err)
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        if (err.name === 'NotAllowedError') {
+          console.error('麦克风权限被拒绝')
+        } else if (err.name === 'NotFoundError') {
+          console.error('没有找到麦克风设备')
+        } else {
+          console.error('WebRTC join error:', err)
+        }
+      }
     }
   }, [boardId, userId, userName, userAvatar, createPeerConnection, initiateCall, startSpeakingDetection])
 
   const toggleMute = useCallback(() => {
     const stream = localStreamRef.current
     if (!stream) return
-    const newMuted = !isMuted
-    stream.getAudioTracks().forEach(t => { t.enabled = newMuted })
-    setIsMuted(!newMuted)
-    channelRef.current?.send({
-      type: 'broadcast',
-      event: 'speaking-state',
-      payload: { userId, speaking: false },
-    })
-  }, [isMuted, userId])
+    const tracks = stream.getAudioTracks()
+    const currentlyMuted = !tracks[0]?.enabled  // enabled=false 表示静音
+    const newMuted = !currentlyMuted
+    tracks.forEach(t => { t.enabled = !newMuted })  // 取消静音时 enabled=true
+    setIsMuted(newMuted)
+    if (newMuted) {
+      channelRef.current?.send({
+        type: 'broadcast',
+        event: 'speaking-state',
+        payload: { userId, speaking: false },
+      })
+    }
+  }, [userId])
 
   // 离开时清理
   useEffect(() => {
