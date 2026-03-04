@@ -25,6 +25,14 @@ export default function BoardPage() {
     })
   }, [router])
 
+  useEffect(() => {
+    const preventZoom = (e: TouchEvent) => {
+      if (e.touches.length >= 2) e.preventDefault()
+    }
+    document.addEventListener('touchmove', preventZoom, { passive: false })
+    return () => document.removeEventListener('touchmove', preventZoom)
+  }, [])
+
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
       <p className="text-xl">加载中...</p>
