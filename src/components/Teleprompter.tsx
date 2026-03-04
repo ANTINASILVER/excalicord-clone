@@ -4,11 +4,10 @@ import { useDraggable } from '@/hooks/useDraggable'
 
 export default function Teleprompter() {
   const [visible, setVisible] = useState(false)
-  const [text, setText] = useState('在此输入提词内容...')
+  const [text, setText] = useState('')
   const [opacity, setOpacity] = useState(0.95)
   const [speed, setSpeed] = useState(1)
   const [scrolling, setScrolling] = useState(false)
-  const [isEditing, setIsEditing] = useState(false)
   const [width, setWidth] = useState(400)
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const animRef = useRef<number | null>(null)
@@ -42,14 +41,15 @@ export default function Teleprompter() {
         onClick={() => setVisible(true)}
         style={{
           position: 'absolute', bottom: 20, left: 20, zIndex: 25,
-          width: 44, height: 44, borderRadius: '50%',
+          height: 36, padding: '0 14px', borderRadius: 18,
           background: 'white', border: '1px solid #e5e7eb',
           color: '#374151', fontSize: '0.75rem', fontWeight: 600,
           cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
+          whiteSpace: 'nowrap',
         }}
         title="提词器"
-      >词</button>
+      >提词器</button>
     )
   }
 
@@ -79,15 +79,6 @@ export default function Teleprompter() {
         <span style={{ color: '#6b7280', fontSize: '0.72rem', fontWeight: 500 }}>提词器</span>
         <div style={{ display: 'flex', gap: 6 }} onMouseDown={e => e.stopPropagation()}>
           <button
-            onClick={() => setIsEditing(e => !e)}
-            style={{
-              padding: '2px 8px', borderRadius: 6, border: '1px solid #e5e7eb',
-              background: isEditing ? '#6366f1' : 'white',
-              color: isEditing ? 'white' : '#374151',
-              fontSize: '0.7rem', cursor: 'pointer',
-            }}
-          >{isEditing ? '完成' : '编辑'}</button>
-          <button
             onClick={() => setVisible(false)}
             style={{
               width: 20, height: 20, borderRadius: '50%', border: '1px solid #e5e7eb',
@@ -105,23 +96,19 @@ export default function Teleprompter() {
         style={{ flex: 1, overflowY: 'auto', padding: '12px 16px', minHeight: 160 }}
         onMouseDown={e => e.stopPropagation()}
       >
-        {isEditing ? (
-          <textarea
-            value={text}
-            onChange={e => setText(e.target.value)}
-            style={{
-              width: '100%', minHeight: 140, background: 'transparent',
-              border: 'none', outline: 'none', resize: 'none',
-              color: '#111827', fontSize: '1rem', lineHeight: 1.7,
-              fontFamily: 'inherit', boxSizing: 'border-box',
-            }}
-          />
-        ) : (
-          <p style={{
+        <textarea
+          value={text}
+          onChange={e => setText(e.target.value)}
+          placeholder="在此输入提词内容..."
+          onMouseDown={e => e.stopPropagation()}
+          style={{
+            width: '100%', minHeight: 140, background: 'transparent',
+            border: 'none', outline: 'none', resize: 'none',
             color: '#111827', fontSize: '1rem', lineHeight: 1.7,
-            margin: 0, whiteSpace: 'pre-wrap', pointerEvents: 'none',
-          }}>{text}</p>
-        )}
+            fontFamily: 'inherit', boxSizing: 'border-box',
+            cursor: 'text',
+          }}
+        />
       </div>
 
       {/* 控制栏 */}

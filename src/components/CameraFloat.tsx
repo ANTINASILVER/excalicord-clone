@@ -97,7 +97,7 @@ export default function CameraFloat({ onStreamChange }: Props) {
           }}
           title="开启摄像头"
         >
-          📷
+          摄像头
         </button>
       )}
     </div>

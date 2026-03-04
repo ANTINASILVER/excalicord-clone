@@ -10,6 +10,7 @@ export function useDraggable(initialX: number, initialY: number) {
     const onMove = (e: MouseEvent | TouchEvent) => {
       if (!dragging.current) return
       e.stopPropagation()
+      e.preventDefault()
       const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
       const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
       setPos({
@@ -18,15 +19,15 @@ export function useDraggable(initialX: number, initialY: number) {
       })
     }
     const onUp = () => { dragging.current = false }
-    window.addEventListener('mousemove', onMove)
-    window.addEventListener('mouseup', onUp)
-    window.addEventListener('touchmove', onMove, { passive: false })
-    window.addEventListener('touchend', onUp)
+    document.addEventListener('mousemove', onMove, { capture: true })
+    document.addEventListener('mouseup', onUp, { capture: true })
+    document.addEventListener('touchmove', onMove, { capture: true, passive: false })
+    document.addEventListener('touchend', onUp, { capture: true })
     return () => {
-      window.removeEventListener('mousemove', onMove)
-      window.removeEventListener('mouseup', onUp)
-      window.removeEventListener('touchmove', onMove)
-      window.removeEventListener('touchend', onUp)
+      document.removeEventListener('mousemove', onMove, { capture: true })
+      document.removeEventListener('mouseup', onUp, { capture: true })
+      document.removeEventListener('touchmove', onMove, { capture: true })
+      document.removeEventListener('touchend', onUp, { capture: true })
     }
   }, [])
 
