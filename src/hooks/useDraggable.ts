@@ -9,6 +9,7 @@ export function useDraggable(initialX: number, initialY: number) {
   useEffect(() => {
     const onMove = (e: MouseEvent | TouchEvent) => {
       if (!dragging.current) return
+      e.stopPropagation()
       const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
       const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
       setPos({
@@ -30,6 +31,8 @@ export function useDraggable(initialX: number, initialY: number) {
   }, [])
 
   const onDragStart = (e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
     dragging.current = true
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
